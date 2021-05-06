@@ -1,0 +1,91 @@
+# Predicting Miami Heat's Probability of Winning a Game 
+
+# Importing Libraries
+```{r message=FALSE}
+library(tidyverse)
+library(readxl)
+library(writexl)
+```
+
+# Importing Data
+#Data from Basketball-Reference in Excel format by Season 
+```{r}
+heat2021 <- read_excel("DATA-heat2021.xlsx")
+heat1920 <- read_excel("DATA-heat1920.xlsx")
+heat1819 <- read_excel("DATA-heat1819.xlsx")
+heat1718 <- read_excel("DATA-heat1718.xlsx")
+heat1617 <- read_excel("DATA-heat1617.xlsx")
+heat1516 <- read_excel("DATA-heat1516.xlsx")
+```
+# Adding years then Combining Data by year 
+```{r}
+heat2021 <- heat2021 %>% 
+  mutate(year = "2020-2021")
+
+heat1920 <- heat1920 %>% 
+  mutate(year = "2019-2020")
+
+heat1819 <- heat1819 %>% 
+  mutate(year = "2018-2019")
+
+heat1718 <- heat1718 %>% 
+  mutate(year = "2017-2018")
+
+heat1617 <- heat1617 %>% 
+  mutate(year = "2016-2017")
+
+heat1516 <- heat1516 %>% 
+  mutate(year = "2015-2016")
+
+heat1521 <- heat2021 %>% 
+  full_join(heat1920) %>% 
+  full_join(heat1819) %>% 
+  full_join(heat1718) %>% 
+  full_join(heat1617) %>% 
+  full_join(heat1516)
+
+# Storing it for future reference 
+write_xlsx(heat1521,"DATA-heat1521.xlsx")
+```
+# Quick Look at Data and Cleaning 
+```{r}
+heat1521
+
+# Makes Home vs Away Variable / Categorical and Numeric 
+heat1521 <- heat1521 %>% 
+  mutate(home = case_when(
+    ...4 == "@" ~ "Away", 
+    T ~ "Home"
+  )) %>% 
+  mutate(home_num = ifelse(home == "Home", 1,0))
+
+heat1521 %>% 
+  group_by(year) %>% 
+  count(home)
+# Teams have generally equal number of home vs away games although the season has been getting shorter 
+
+#Making Numeric Win Variable 
+heat1521 <- heat1521 %>% 
+  mutate(win = case_when(
+    `W/L` == "W" ~ 1, 
+    T ~ 0
+  ))
+heat1521 %>% 
+  select(win, home, year) %>% 
+  group_by(year) %>% 
+  count(win, home)
+# It seems we win slightly more home games as expected
+```
+# Building Very Simple Model 
+```{r}
+simple_model <- glm(win~home_num, family = 'binomial', data = heat1521)
+summary(simple_model)
+
+anova(simple_model, test = "LR") # The model is statistically different from the null model using Likelihood-Ratio test 
+
+exp(confint(simple_model, level = 0.95))
+# 95% confident the odds of winning a game are between 1.31 and 2.73 times higher when at home (as expected) 
+```
+# Making Simple Graph of Logistic Relationship 
+
+
